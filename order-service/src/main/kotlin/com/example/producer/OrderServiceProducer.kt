@@ -1,7 +1,10 @@
 package com.example.producer
 
 import akka.actor.typed.ActorRef
-import akka.actor.typed.javadsl.*
+import akka.actor.typed.javadsl.AbstractBehavior
+import akka.actor.typed.javadsl.ActorContext
+import akka.actor.typed.javadsl.Behaviors
+import akka.actor.typed.javadsl.Receive
 import akka.cluster.sharding.typed.ShardingEnvelope
 import akka.cluster.sharding.typed.delivery.ShardingProducerController
 import com.example.consumer.order.OrderServiceConsumer

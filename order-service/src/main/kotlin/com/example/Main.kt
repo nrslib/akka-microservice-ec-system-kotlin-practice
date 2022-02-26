@@ -9,5 +9,5 @@ fun main() {
     val setup = ActorSystemSetup.empty().withSetup(
         JacksonObjectMapperProviderSetup(KotlinModuleJacksonObjectMapperFactory())
     )
-    ActorSystem.create(Guardian.create(), "shoppers", setup)
+    ActorSystem.create(Guardian.create(), "ec-system", setup)
 }

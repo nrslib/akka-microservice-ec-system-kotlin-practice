@@ -4,7 +4,6 @@ import akka.Done
 import akka.actor.typed.ActorRef
 import akka.actor.typed.ActorSystem
 import akka.actor.typed.Behavior
-import akka.actor.typed.javadsl.ActorContext
 import akka.actor.typed.javadsl.Behaviors
 import akka.cluster.sharding.typed.javadsl.ClusterSharding
 import akka.cluster.sharding.typed.javadsl.Entity
@@ -14,36 +13,31 @@ import akka.persistence.typed.PersistenceId
 import akka.persistence.typed.javadsl.CommandHandler
 import akka.persistence.typed.javadsl.EventHandler
 import akka.persistence.typed.javadsl.EventSourcedBehavior
-import com.example.app.service.order.OrderService
 import com.example.shared.persistence.JacksonSerializable
 
 class Order(
-    id: String,
-    private val shard: ActorRef<ClusterSharding.ShardCommand>,
-    private val context: ActorContext<Command>
+    id: String
 ) :
     EventSourcedBehavior<Order.Command, Order.Event, OrderState>(PersistenceId.ofUniqueId(id)) {
     companion object {
         fun typekey() = EntityTypeKey.create(Command::class.java, "Order")
-        fun create(id: String, shard: ActorRef<ClusterSharding.ShardCommand>): Behavior<Command> = Behaviors.setup {
-            Order(id, shard, it)
+        fun create(id: String): Behavior<Command> = Behaviors.setup {
+            Order(id)
         }
 
         fun initSharding(system: ActorSystem<*>) {
             ClusterSharding.get(system).init(Entity.of(typekey()) {
-                create(it.entityId, it.shard)
-            }.withStopMessage(Stop))
+                create(it.entityId)
+            })
         }
     }
-
-    object Stop : Command
 
     sealed interface Command
     object Create : Command
     data class Get(val replyTo: ActorRef<OrderState>) : Command
     data class Approve(val replyTo: ActorRef<StatusReply<Done>>) : Command
     data class Reject(val replyTo: ActorRef<StatusReply<Done>>) : Command
-    data class Cancel(val replyTo: ActorRef<OrderService.Message>) : Command
+    data class Cancel(val replyTo: ActorRef<StatusReply<Done>>) : Command
 
     sealed interface Event : JacksonSerializable
     object Created : Event
@@ -58,16 +52,20 @@ class Order(
     override fun commandHandler(): CommandHandler<Command, Event, OrderState> =
         newCommandHandlerBuilder()
             .forAnyState()
-            .onCommand(Get::class.java) {state, (replyTo) ->
+            .onCommand(Get::class.java) { state, (replyTo) ->
                 Effect().none().thenReply(replyTo) {
                     state
                 }
             }
-            .onCommand(Create::class.java) { _, _ ->
-                Effect().persist(Created)
+            .onCommand(Create::class.java) { state, _ ->
+                if (state.canActivate()) {
+                    Effect().persist(Created)
+                } else {
+                    Effect().none()
+                }
             }
             .onCommand(Approve::class.java) { state, (replyTo) ->
-                if (state.canActivate()) {
+                if (state.canApprove()) {
                     Effect().persist(Approved).thenReply(replyTo) {
                         StatusReply.ack()
                     }
@@ -91,16 +89,11 @@ class Order(
             .onCommand(Cancel::class.java) { state, (replyTo) ->
                 if (state.canCancel()) {
                     Effect().persist(Canceled)
-                        .thenReply(replyTo) { OrderService.CancelOrderReply(true) }
+                        .thenReply(replyTo) { StatusReply.ack() }
                 } else {
                     Effect().none()
-                        .thenReply(replyTo) { OrderService.CancelOrderReply(false) }
+                        .thenReply(replyTo) { StatusReply.error("current state: ${state.orderState}") }
                 }
-            }
-            .onCommand(Stop::class.java) { _, _ ->
-                Effect().none().thenRun {
-                    shard.tell(ClusterSharding.Passivate(context.self))
-                }.thenStop()
             }
             .build()
 

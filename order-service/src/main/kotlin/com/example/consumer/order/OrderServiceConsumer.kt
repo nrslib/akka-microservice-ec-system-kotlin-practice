@@ -1,13 +1,13 @@
 package com.example.consumer.order
 
+import akka.Done
 import akka.actor.typed.ActorRef
 import akka.actor.typed.delivery.ConsumerController
-import akka.actor.typed.javadsl.AbstractBehavior
-import akka.actor.typed.javadsl.ActorContext
-import akka.actor.typed.javadsl.Behaviors
-import akka.actor.typed.javadsl.Receive
+import akka.actor.typed.javadsl.*
+import akka.pattern.StatusReply
 import com.example.app.provider.OrderServiceProvider
 import com.example.app.service.order.OrderService
+import com.example.saga.order.create.OrderCreateSaga
 
 class OrderServiceConsumer(
     context: ActorContext<Message>,
@@ -16,7 +16,11 @@ class OrderServiceConsumer(
     private val consumerController: ActorRef<ConsumerController.Start<Message>>
 ) : AbstractBehavior<OrderServiceConsumer.Message>(context) {
     companion object {
-        fun create(orderServiceProvider: OrderServiceProvider, entityId: String, consumerController: ActorRef<ConsumerController.Start<Message>>) =
+        fun create(
+            orderServiceProvider: OrderServiceProvider,
+            entityId: String,
+            consumerController: ActorRef<ConsumerController.Start<Message>>
+        ) =
             Behaviors.setup<Message> {
                 it.self.tell(Initialize)
 
@@ -27,7 +31,9 @@ class OrderServiceConsumer(
     sealed interface Message
     object Initialize : Message
     data class CommandDelivery(val message: Message, val confirmTo: ActorRef<ConsumerController.Confirmed>) : Message
-    data class Approved(val orderId: String, val replyTo: ActorRef<OrderService.ApproveOrderResponse>) : Message
+    data class Approved(val orderId: String, val replyTo: ActorRef<OrderCreateSaga.Message>) : Message
+
+    val timeout = context.system.settings().config().getDuration("order-service.ask-timeout")
 
     override fun createReceive(): Receive<Message> =
         newReceiveBuilder()
@@ -43,7 +49,19 @@ class OrderServiceConsumer(
             .onMessage(Approved::class.java) { (orderId, replyTo) ->
                 val orderService =
                     context.spawn(orderServiceProvider.provide(), "orderService-fromOrderServiceConsumer-$entityId")
-                orderService.tell(OrderService.ApproveOrder(orderId, replyTo))
+                val futureStage = AskPattern.askWithStatus(
+                    orderService,
+                    { replyTo: ActorRef<StatusReply<Done>> -> OrderService.ApproveOrder(orderId, replyTo) },
+                    timeout,
+                    context.system.scheduler()
+                )
+                futureStage.toCompletableFuture()
+                    .thenApply {
+                        replyTo.tell(OrderCreateSaga.ApproveReply(true))
+                    }
+                    .exceptionally {
+                        replyTo.tell(OrderCreateSaga.ApproveReply(false))
+                    }
 
                 Behaviors.stopped()
             }

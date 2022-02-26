@@ -2,13 +2,10 @@ package com.example.app.service.order
 
 import akka.Done
 import akka.actor.typed.ActorRef
-import akka.actor.typed.ActorSystem
 import akka.actor.typed.Behavior
 import akka.actor.typed.javadsl.*
 import akka.cluster.sharding.typed.javadsl.ClusterSharding
-import akka.cluster.sharding.typed.javadsl.Entity
 import akka.cluster.sharding.typed.javadsl.EntityRef
-import akka.cluster.sharding.typed.javadsl.EntityTypeKey
 import akka.pattern.StatusReply
 import com.example.app.model.order.Order
 import com.example.app.model.order.OrderState
@@ -29,10 +26,8 @@ class OrderService(
     data class GetOrder(val orderId: String, val replyTo: ActorRef<OrderState>) : Message
     data class CreateOrder(val accountId: String, val replyTo: ActorRef<CreateOrderReply>) : Message
     data class CreateOrderReply(val orderId: String) : Message
-    data class CancelOrder(val orderId: String, val replyTo: ActorRef<Message>) : Message
-    data class CancelOrderReply(val success: Boolean) : Message
-    data class ApproveOrder(val orderId: String, val replyTo: ActorRef<ApproveOrderResponse>) : Message
-    data class ApproveOrderResponse(val success: Boolean)
+    data class CancelOrder(val orderId: String, val replyTo: ActorRef<StatusReply<Done>>) : Message
+    data class ApproveOrder(val orderId: String, val replyTo: ActorRef<StatusReply<Done>>) : Message
 
     private val clusterSharding = ClusterSharding.get(context.system)
     private val timeout = context.system.settings().config().getDuration("order-service.ask-timeout")
@@ -41,14 +36,14 @@ class OrderService(
         newReceiveBuilder()
             .onMessage(GetOrder::class.java) { (orderId, replyTo) ->
                 val order = getOrder(orderId)
-                val future = AskPattern.ask(
+                val futureStage = AskPattern.ask(
                     order,
-                    {replyTo: ActorRef<OrderState> -> Order.Get(replyTo)},
+                    { replyTo: ActorRef<OrderState> -> Order.Get(replyTo) },
                     timeout,
                     context.system.scheduler()
                 )
 
-                future.toCompletableFuture()
+                futureStage.toCompletableFuture()
                     .thenApply {
                         replyTo.tell(it)
                     }
@@ -71,7 +66,7 @@ class OrderService(
                 val order = getOrder(orderId)
                 val futureStage = AskPattern.ask(
                     order,
-                    { replyTo: ActorRef<Message> -> Order.Cancel(replyTo) },
+                    { replyTo: ActorRef<StatusReply<Done>> -> Order.Cancel(replyTo) },
                     timeout,
                     context.system.scheduler()
                 )
@@ -84,16 +79,16 @@ class OrderService(
             }
             .onMessage(ApproveOrder::class.java) { (orderId, replyTo) ->
                 val order = getOrder(orderId)
-                val result = AskPattern.askWithStatus(
+                val futureStage = AskPattern.ask(
                     order,
-                    {replyTo: ActorRef<StatusReply<Done>> -> Order.Approve(replyTo)},
+                    { replyTo: ActorRef<StatusReply<Done>> -> Order.Approve(replyTo) },
                     timeout,
                     context.system.scheduler()
                 )
 
-                result.toCompletableFuture()
+                futureStage.toCompletableFuture()
                     .thenApply {
-                        replyTo.tell(ApproveOrderResponse(it is Done))
+                        replyTo.tell(it)
                     }
 
                 this
