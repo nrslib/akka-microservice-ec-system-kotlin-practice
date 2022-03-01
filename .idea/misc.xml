@@ -2,10 +2,14 @@
 <project version="4">
   <component name="ExternalStorageConfigurationManager" enabled="true" />
   <component name="FrameworkDetectionExcludesConfiguration">
+    <file type="web" url="file://$PROJECT_DIR$/billing/billing-service" />
+    <file type="web" url="file://$PROJECT_DIR$/billing/billing-service-api" />
     <file type="web" url="file://$PROJECT_DIR$/chapter-cluster" />
     <file type="web" url="file://$PROJECT_DIR$/chapter-persistence" />
     <file type="web" url="file://$PROJECT_DIR$/chapter-up-and-running" />
-    <file type="web" url="file://$PROJECT_DIR$/order-service" />
+    <file type="web" url="file://$PROJECT_DIR$/order/order-service" />
+    <file type="web" url="file://$PROJECT_DIR$/order/order-service-api" />
+    <file type="web" url="file://$PROJECT_DIR$/shared" />
   </component>
   <component name="ProjectType">
     <option name="id" value="jpab" />
