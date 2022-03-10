@@ -11,6 +11,7 @@
     <file type="web" url="file://$PROJECT_DIR$/order/order-service-api" />
     <file type="web" url="file://$PROJECT_DIR$/shared" />
   </component>
+  <component name="ProjectRootManager" version="2" project-jdk-name="jbr-11" project-jdk-type="JavaSDK" />
   <component name="ProjectType">
     <option name="id" value="jpab" />
   </component>

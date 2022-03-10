@@ -1,5 +1,3 @@
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-
 plugins {
     kotlin("jvm") version "1.6.10"
 
@@ -15,10 +13,15 @@ repositories {
 
 val akkaVersion = "2.6.18"
 val akkaHttpVersion = "10.2.7"
-val scalaBinary = "2.12"
+val scalaBinary = "2.13"
 
 dependencies {
     implementation(kotlin("stdlib"))
+
+    implementation("com.typesafe.akka:akka-stream-kafka_${scalaBinary}:3.0.0")
+
+    implementation("com.typesafe.akka:akka-cluster-typed_$scalaBinary:$akkaVersion") // contains akka-cluster-tools
+    implementation("com.typesafe.akka:akka-cluster-sharding-typed_$scalaBinary:$akkaVersion")
 
     implementation("com.typesafe.akka:akka-persistence-typed_$scalaBinary:$akkaVersion")
     implementation("com.typesafe.akka:akka-persistence-query_$scalaBinary:$akkaVersion")

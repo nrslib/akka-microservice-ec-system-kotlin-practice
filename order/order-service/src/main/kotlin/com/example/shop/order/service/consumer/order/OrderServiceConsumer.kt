@@ -4,9 +4,6 @@ import akka.Done
 import akka.actor.typed.ActorRef
 import akka.actor.typed.delivery.ConsumerController
 import akka.actor.typed.javadsl.*
-import akka.cluster.sharding.typed.delivery.ShardingConsumerController
-import akka.cluster.sharding.typed.javadsl.ClusterSharding
-import akka.cluster.sharding.typed.javadsl.EntityTypeKey
 import akka.pattern.StatusReply
 import com.example.shop.order.service.app.provider.OrderServiceProvider
 import com.example.shop.order.service.app.service.order.OrderService

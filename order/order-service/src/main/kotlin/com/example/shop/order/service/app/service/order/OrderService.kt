@@ -56,7 +56,7 @@ class OrderService(
 
                 replyTo.tell(CreateOrderReply(orderId))
 
-                val saga = getOrderCreateSaga(orderId + "saga")
+                val saga = getOrderCreateSaga(orderId)
                 saga.tell(OrderCreateSaga.StartSaga(orderId))
 
                 this

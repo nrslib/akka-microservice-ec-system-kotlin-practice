@@ -5,8 +5,9 @@ import akka.actor.typed.javadsl.AbstractBehavior
 import akka.actor.typed.javadsl.ActorContext
 import akka.actor.typed.javadsl.Behaviors
 import akka.actor.typed.javadsl.Receive
-import com.example.shop.billing.api.service.message.BillingServiceMessage
-import com.example.shop.billing.api.service.message.Test
+import com.example.shop.billing.api.consumer.billing.ApproveOrder
+import com.example.shop.billing.api.consumer.billing.BillingServiceMessage
+import com.example.shop.billing.api.consumer.billing.Test
 import com.example.shop.shared.id.IdGenerator
 
 class BillingService(context: ActorContext<BillingServiceMessage>) : AbstractBehavior<BillingServiceMessage>(context) {
@@ -20,6 +21,11 @@ class BillingService(context: ActorContext<BillingServiceMessage>) : AbstractBeh
         newReceiveBuilder()
             .onMessage(Test::class.java) {
                 println("test")
+
+                this
+            }
+            .onMessage(ApproveOrder::class.java) {
+                println("approving")
 
                 this
             }
