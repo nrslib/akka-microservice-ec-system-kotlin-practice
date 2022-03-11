@@ -4,6 +4,7 @@ import akka.Done
 import akka.actor.typed.ActorRef
 import akka.actor.typed.ActorSystem
 import akka.actor.typed.Behavior
+import akka.actor.typed.javadsl.ActorContext
 import akka.actor.typed.javadsl.Behaviors
 import akka.cluster.sharding.typed.javadsl.ClusterSharding
 import akka.cluster.sharding.typed.javadsl.Entity
@@ -26,8 +27,8 @@ class Order(
             Order(id)
         }
 
-        fun initSharding(system: ActorSystem<*>) {
-            ClusterSharding.get(system).init(Entity.of(typekey()) {
+        fun initSharding(context: ActorContext<*>) {
+            ClusterSharding.get(context.system).init(Entity.of(typekey()) {
                 create(it.entityId)
             })
         }
