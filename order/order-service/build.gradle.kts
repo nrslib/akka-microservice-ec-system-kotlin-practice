@@ -1,4 +1,9 @@
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+
 plugins {
+    id("com.github.johnrengelman.shadow") version ("7.1.2")
+
     kotlin("jvm") version "1.6.10"
 }
 
@@ -56,4 +61,22 @@ dependencies {
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:1.6.10")
     // https://mvnrepository.com/artifact/commons-io/commons-io
     testImplementation("commons-io:commons-io:2.11.0")
+}
+
+tasks.withType<KotlinCompile> {
+    kotlinOptions {
+        freeCompilerArgs = listOf("-Xjsr305=strict")
+        jvmTarget = "1.8"
+    }
+}
+
+tasks.withType<Jar> {
+    manifest {
+        attributes["Main-Class"] = "com.example.shop.order.service.MainKt"
+    }
+}
+
+tasks.withType<ShadowJar> {
+    append("reference.conf")
+    append("version.conf")
 }
