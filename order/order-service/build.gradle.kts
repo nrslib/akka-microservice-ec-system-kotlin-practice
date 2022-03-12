@@ -61,6 +61,8 @@ dependencies {
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:1.6.10")
     // https://mvnrepository.com/artifact/commons-io/commons-io
     testImplementation("commons-io:commons-io:2.11.0")
+
+    implementation("software.amazon.msk:aws-msk-iam-auth:1.1.2")
 }
 
 tasks.withType<KotlinCompile> {

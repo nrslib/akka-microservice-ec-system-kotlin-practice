@@ -13,11 +13,11 @@ import com.example.kafka.serialization.PayloadSerializer
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.serialization.StringSerializer
 
-class KafkaProducer(context: ActorContext<Message>, private val topic: String, private val bootStrapServers: String) :
+class KafkaProducer(context: ActorContext<Message>, private val topic: String, private val bootStrapServers: String, private val kafkaProducerProperties: Map<String, String>) :
     AbstractBehavior<KafkaProducer.Message>(context) {
     companion object {
-        fun create(topic: String, bootStrapServers: String) = Behaviors.setup<Message> {
-            KafkaProducer(it, topic, bootStrapServers)
+        fun create(topic: String, bootStrapServers: String, kafkaProducerProperties: Map<String, String>) = Behaviors.setup<Message> {
+            KafkaProducer(it, topic, bootStrapServers, kafkaProducerProperties)
         }
     }
 
@@ -29,6 +29,7 @@ class KafkaProducer(context: ActorContext<Message>, private val topic: String, p
             .onMessage(Send::class.java) { (id, message) ->
                 val kafkaProducerSettings = ProducerSettings
                     .create(context.system, StringSerializer(), PayloadSerializer())
+                    .withProperties(kafkaProducerProperties)
                     .withBootstrapServers(bootStrapServers)
 
                 Source.single(

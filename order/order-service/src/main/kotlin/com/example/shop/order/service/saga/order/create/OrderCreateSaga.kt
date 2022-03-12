@@ -14,11 +14,14 @@ import com.example.kafka.delivery.KafkaProducer
 import com.example.shop.billing.api.consumer.billing.ApproveOrder
 import com.example.shop.billing.api.consumer.billing.BillingServiceProxy
 import com.example.shop.shared.persistence.JacksonSerializable
+import org.apache.kafka.clients.CommonClientConfigs
+import org.apache.kafka.common.config.SaslConfigs
 
 
 class OrderCreateSaga(
     private val context: ActorContext<Message>,
-    sagaId: String
+    sagaId: String,
+    private val createProducer: (topic: String) -> Behavior<KafkaProducer.Message>
 ) : EventSourcedBehavior<OrderCreateSaga.Message, OrderCreateSaga.Event, OrderCreateSagaState>(
     PersistenceId.ofUniqueId(
         sagaId
@@ -26,13 +29,13 @@ class OrderCreateSaga(
 ) {
     companion object {
         fun typekey() = EntityTypeKey.create(Message::class.java, "OrderCreateSaga")
-        fun create(id: String): Behavior<Message> = Behaviors.setup {
-            OrderCreateSaga(it, id)
+        fun create(id: String, createProducer: (topic: String) -> Behavior<KafkaProducer.Message>): Behavior<Message> = Behaviors.setup {
+            OrderCreateSaga(it, id, createProducer)
         }
 
-        fun initSharding(context: ActorContext<*>) {
+        fun initSharding(context: ActorContext<*>, createProducer: (topic: String) -> Behavior<KafkaProducer.Message>) {
             ClusterSharding.get(context.system).init(Entity.of(typekey()) {
-                create(it.entityId)
+                create(it.entityId, createProducer)
             })
         }
     }
@@ -47,8 +50,6 @@ class OrderCreateSaga(
     object Approved : Event
     object Rejected : Event
 
-    val kafkaBootStrapServers = context.system.settings().config().getString("kafka.bootstrap-servers")
-
     override fun emptyState(): OrderCreateSagaState = OrderCreateSagaState("")
 
     override fun commandHandler(): CommandHandler<Message, Event, OrderCreateSagaState> =
@@ -57,7 +58,7 @@ class OrderCreateSaga(
             .onCommand(StartSaga::class.java) { _, (orderId) ->
                 Effect().persist(Started).thenRun {
                     val producer = context.spawn(
-                        KafkaProducer.create(BillingServiceProxy.topic, kafkaBootStrapServers),
+                        createProducer(BillingServiceProxy.topic),
                         "billingServiceProducer-$orderId"
                     )
                     producer.tell(KafkaProducer.Send(orderId, ApproveOrder(orderId)))
