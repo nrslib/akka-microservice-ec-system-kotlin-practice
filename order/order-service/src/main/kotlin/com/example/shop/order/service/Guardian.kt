@@ -4,6 +4,7 @@ import akka.actor.typed.Behavior
 import akka.actor.typed.javadsl.ActorContext
 import akka.actor.typed.javadsl.Behaviors
 import akka.cluster.typed.Cluster
+import com.example.kafka.delivery.KafkaConfig
 import com.example.kafka.delivery.KafkaProducer
 import com.example.shop.order.service.app.model.order.Order
 import com.example.shop.order.service.app.provider.OrderServiceProvider
@@ -37,21 +38,7 @@ object Guardian {
 
     private fun initSharding(context: ActorContext<*>) {
         OrderCreateSaga.initSharding(context) { topic ->
-            val kafkaBootstrapServers = context.system.settings().config().getString("kafka.bootstrap-servers")
-            KafkaProducer.create(
-                topic, kafkaBootstrapServers, mapOf(
-                    Pair(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, "SASL_SSL"),
-                    Pair(SaslConfigs.SASL_MECHANISM, "AWS_MSK_IAM"),
-                    Pair(
-                        SaslConfigs.SASL_JAAS_CONFIG,
-                        "software.amazon.msk.auth.iam.IAMLoginModule required awsProfileName=\"default\";"
-                    ),
-                    Pair(
-                        SaslConfigs.SASL_CLIENT_CALLBACK_HANDLER_CLASS,
-                        "software.amazon.msk.auth.iam.IAMClientCallbackHandler"
-                    )
-                )
-            )
+            KafkaProducer.create(topic, KafkaConfig.load(context.system.settings().config()))
         }
         Order.initSharding(context)
     }

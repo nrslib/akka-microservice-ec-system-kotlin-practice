@@ -19,6 +19,7 @@ dependencies {
 
     // Modules
     implementation("com.example.shop:billing-service-api:1.0.0")
+    implementation("com.example.shop:order-service-api:1.0.0")
     implementation("com.example.shop:shared:1.0.0")
 
     // Akka

@@ -13,11 +13,11 @@ import com.example.kafka.serialization.PayloadSerializer
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.serialization.StringSerializer
 
-class KafkaProducer(context: ActorContext<Message>, private val topic: String, private val bootStrapServers: String, private val kafkaProducerProperties: Map<String, String>) :
+class KafkaProducer(context: ActorContext<Message>, private val topic: String, private val kafkaConfig: KafkaConfig) :
     AbstractBehavior<KafkaProducer.Message>(context) {
     companion object {
-        fun create(topic: String, bootStrapServers: String, kafkaProducerProperties: Map<String, String>) = Behaviors.setup<Message> {
-            KafkaProducer(it, topic, bootStrapServers, kafkaProducerProperties)
+        fun create(topic: String, kafkaConfig: KafkaConfig) = Behaviors.setup<Message> {
+            KafkaProducer(it, topic, kafkaConfig)
         }
     }
 
@@ -29,8 +29,8 @@ class KafkaProducer(context: ActorContext<Message>, private val topic: String, p
             .onMessage(Send::class.java) { (id, message) ->
                 val kafkaProducerSettings = ProducerSettings
                     .create(context.system, StringSerializer(), PayloadSerializer())
-                    .withProperties(kafkaProducerProperties)
-                    .withBootstrapServers(bootStrapServers)
+                    .withProperties(kafkaConfig.properties)
+                    .withBootstrapServers(kafkaConfig.bootstrapServers)
 
                 Source.single(
                     ProducerMessage.single(
@@ -42,8 +42,11 @@ class KafkaProducer(context: ActorContext<Message>, private val topic: String, p
                     )
                 )
                     .via(Producer.flexiFlow(kafkaProducerSettings))
+                    .log("test")
                     .runWith(Sink.foreach {
+                        println("===== Kafka Producer End log begin =====")
                         println(it)
+                        println("===== Kafka Producer End log end =====")
                     }, context.system)
 
                 this

@@ -49,7 +49,7 @@ dependencies {
     testImplementation("com.typesafe.akka:akka-multi-node-testkit_$scalaBinary:$akkaVersion")
 
     implementation("com.typesafe.akka:akka-slf4j_$scalaBinary:$akkaVersion")
-    implementation("ch.qos.logback:logback-classic:1.2.10")
+    implementation("ch.qos.logback:logback-classic:1.2.11")
 
     implementation(platform("com.typesafe.akka:akka-bom_$scalaBinary:$akkaVersion"))
     implementation("com.typesafe.akka:akka-serialization-jackson_$scalaBinary:$akkaVersion")
@@ -62,7 +62,7 @@ dependencies {
     // https://mvnrepository.com/artifact/commons-io/commons-io
     testImplementation("commons-io:commons-io:2.11.0")
 
-    implementation("software.amazon.msk:aws-msk-iam-auth:1.1.2")
+    implementation("software.amazon.msk:aws-msk-iam-auth:1.1.3")
 }
 
 tasks.withType<KotlinCompile> {

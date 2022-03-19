@@ -11,11 +11,9 @@ import akka.persistence.typed.javadsl.CommandHandler
 import akka.persistence.typed.javadsl.EventHandler
 import akka.persistence.typed.javadsl.EventSourcedBehavior
 import com.example.kafka.delivery.KafkaProducer
-import com.example.shop.billing.api.consumer.billing.ApproveOrder
-import com.example.shop.billing.api.consumer.billing.BillingServiceProxy
+import com.example.shop.billing.api.billing.BillingServiceChannels
+import com.example.shop.billing.api.billing.commands.ApproveOrder
 import com.example.shop.shared.persistence.JacksonSerializable
-import org.apache.kafka.clients.CommonClientConfigs
-import org.apache.kafka.common.config.SaslConfigs
 
 
 class OrderCreateSaga(
@@ -58,7 +56,7 @@ class OrderCreateSaga(
             .onCommand(StartSaga::class.java) { _, (orderId) ->
                 Effect().persist(Started).thenRun {
                     val producer = context.spawn(
-                        createProducer(BillingServiceProxy.topic),
+                        createProducer(BillingServiceChannels.commandChannel),
                         "billingServiceProducer-$orderId"
                     )
                     producer.tell(KafkaProducer.Send(orderId, ApproveOrder(orderId)))

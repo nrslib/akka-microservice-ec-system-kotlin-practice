@@ -13,32 +13,32 @@ import akka.kafka.ConsumerSettings
 import akka.kafka.Subscriptions
 import akka.kafka.javadsl.Committer
 import akka.kafka.javadsl.Consumer
+import com.example.kafka.delivery.KafkaConfig
 import com.example.kafka.serialization.PayloadDeserializer
-import com.example.shop.billing.api.consumer.billing.BillingServiceMessage
-import com.example.shop.billing.service.app.service.billing.BillingService
-import com.example.shop.shared.id.UuidIdGenerator
-import org.apache.kafka.clients.CommonClientConfigs
+import com.example.shop.billing.api.billing.BillingServiceChannels
+import com.example.shop.billing.api.billing.commands.BillingServiceCommand
+import com.example.shop.billing.service.handlers.BillingServiceCommandHandler
 import org.apache.kafka.clients.consumer.ConsumerConfig
-import org.apache.kafka.common.config.SaslConfigs
 import org.apache.kafka.common.serialization.StringDeserializer
 import java.util.*
 import java.util.concurrent.CompletableFuture
 
 class BillingServiceConsumer(
-    context: ActorContext<Message>
+    context: ActorContext<Message>,
+    private val kafkaConfig: KafkaConfig
 ) : AbstractBehavior<BillingServiceConsumer.Message>(context) {
     companion object {
-        fun create() =
+        fun create(kafkaConfig: KafkaConfig) =
             Behaviors.setup<Message> {
-                BillingServiceConsumer(it)
+                BillingServiceConsumer(it, kafkaConfig)
             }
 
         fun typekey() = EntityTypeKey.create(Message::class.java, "BillingServiceConsumer")
 
-        fun initSharding(system: ActorSystem<*>) {
+        fun initSharding(system: ActorSystem<*>, kafkaConfig: KafkaConfig) {
             ClusterSharding.get(system).init(
                 Entity.of(typekey()) {
-                    create()
+                    create(kafkaConfig)
                 }
             )
         }
@@ -46,33 +46,23 @@ class BillingServiceConsumer(
 
     sealed interface Message
     object Initialize : Message
-    data class Received(val message: BillingServiceMessage) : Message
+    data class Received(val message: BillingServiceCommand) : Message
 
     override fun createReceive(): Receive<Message> =
         newReceiveBuilder()
             .onMessage(Initialize::class.java) {
-                val bootstrapServers = context.system.settings().config().getString("kafka.bootstrap-servers")
-
-                val topic = "billing-service-topic"
-                val connectMskProps = mapOf(
-                    Pair(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, "SASL_SSL"),
-                    Pair(SaslConfigs.SASL_MECHANISM, "AWS_MSK_IAM"),
-                    Pair(SaslConfigs.SASL_JAAS_CONFIG, "software.amazon.msk.auth.iam.IAMLoginModule required awsProfileName=\"default\";"),
-                    Pair(SaslConfigs.SASL_CLIENT_CALLBACK_HANDLER_CLASS, "software.amazon.msk.auth.iam.IAMClientCallbackHandler")
-                )
-
                 val kafkaConsumerSettings = ConsumerSettings.create(
                     context.system,
                     StringDeserializer(),
-                    PayloadDeserializer<BillingServiceMessage>()
+                    PayloadDeserializer<BillingServiceCommand>()
                 )
-                    .withBootstrapServers(bootstrapServers)
-                    .withGroupId(topic)
+                    .withBootstrapServers(kafkaConfig.bootstrapServers)
+                    .withGroupId(BillingServiceChannels.commandChannel)
                     .withProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
-                    .withProperties(connectMskProps)
+                    .withProperties(kafkaConfig.properties)
 
                 val committerSettings = CommitterSettings.create(context.system)
-                Consumer.committableSource(kafkaConsumerSettings, Subscriptions.topics(topic))
+                Consumer.committableSource(kafkaConsumerSettings, Subscriptions.topics(BillingServiceChannels.commandChannel))
                     .mapAsync(1) {
                         CompletableFuture.supplyAsync {
                             context.self.tell(Received(it.record().value()))
@@ -88,8 +78,8 @@ class BillingServiceConsumer(
             }
             .onMessage(Received::class.java) {
                 val id = UUID.randomUUID().toString()
-                val service = context.spawn(BillingService.create(UuidIdGenerator()), "billingService-$id")
-                service.tell(it.message)
+                val handler = context.spawn(BillingServiceCommandHandler.create(kafkaConfig), "billingServiceCommandHandler-$id")
+                handler.tell(BillingServiceCommandHandler.Handle(it.message))
 
                 this
             }

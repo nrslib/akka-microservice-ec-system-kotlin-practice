@@ -1,31 +1,31 @@
 package com.example.shop.billing.service.app.service.billing
 
+import akka.Done
+import akka.actor.typed.ActorRef
 import akka.actor.typed.Behavior
 import akka.actor.typed.javadsl.AbstractBehavior
 import akka.actor.typed.javadsl.ActorContext
 import akka.actor.typed.javadsl.Behaviors
 import akka.actor.typed.javadsl.Receive
-import com.example.shop.billing.api.consumer.billing.ApproveOrder
-import com.example.shop.billing.api.consumer.billing.BillingServiceMessage
-import com.example.shop.billing.api.consumer.billing.Test
+import akka.pattern.StatusReply
 import com.example.shop.shared.id.IdGenerator
 
-class BillingService(context: ActorContext<BillingServiceMessage>) : AbstractBehavior<BillingServiceMessage>(context) {
+class BillingService(context: ActorContext<Message>) : AbstractBehavior<BillingService.Message>(context) {
     companion object {
-        fun create(idGenerator: IdGenerator): Behavior<BillingServiceMessage> = Behaviors.setup {
+        fun create(idGenerator: IdGenerator): Behavior<Message> = Behaviors.setup {
             BillingService(it)
         }
     }
 
-    override fun createReceive(): Receive<BillingServiceMessage> =
-        newReceiveBuilder()
-            .onMessage(Test::class.java) {
-                println("test")
+    sealed interface Message
+    data class ApproveOrder(val orderId: String, val replyTo: ActorRef<StatusReply<Done>>) : Message
 
-                this
-            }
+    override fun createReceive(): Receive<Message> =
+        newReceiveBuilder()
             .onMessage(ApproveOrder::class.java) {
                 println("approving")
+
+                it.replyTo.tell(StatusReply.Ack())
 
                 this
             }
