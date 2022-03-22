@@ -10,6 +10,8 @@
     <file type="web" url="file://$PROJECT_DIR$/order/order-service" />
     <file type="web" url="file://$PROJECT_DIR$/order/order-service-api" />
     <file type="web" url="file://$PROJECT_DIR$/shared" />
+    <file type="web" url="file://$PROJECT_DIR$/stock/stock-service" />
+    <file type="web" url="file://$PROJECT_DIR$/stock/stock-service-api" />
   </component>
   <component name="ProjectRootManager" version="2" project-jdk-name="jbr-11" project-jdk-type="JavaSDK" />
   <component name="ProjectType">

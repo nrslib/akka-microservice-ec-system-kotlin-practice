@@ -99,6 +99,6 @@ class OrderService(
     }
 
     private fun getOrderCreateSaga(orderId: String): EntityRef<OrderCreateSaga.Message> {
-        return clusterSharding.entityRefFor(OrderCreateSaga.typekey(), "orderCreateSaga-$orderId")
+        return clusterSharding.entityRefFor(OrderCreateSaga.typekey(), OrderCreateSaga.entityId(orderId))
     }
 }

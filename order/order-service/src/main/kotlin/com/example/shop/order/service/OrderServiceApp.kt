@@ -5,7 +5,11 @@ import akka.http.javadsl.Http
 import com.example.shop.order.service.rest.RestRoutes
 import com.typesafe.config.Config
 
-class OrderServiceApp(private val actorSystem: ActorSystem<*>, private val config: Config, private val restRoutes: RestRoutes) {
+class OrderServiceApp(
+    private val actorSystem: ActorSystem<*>,
+    private val config: Config,
+    private val restRoutes: RestRoutes
+) {
     fun start() {
         val host = config.getString("http.host")
         val port = config.getInt("http.port")

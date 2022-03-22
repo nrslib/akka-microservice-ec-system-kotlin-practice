@@ -1,5 +1,5 @@
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     id("com.github.johnrengelman.shadow") version ("7.1.2")
@@ -24,6 +24,8 @@ dependencies {
 
     // Modules
     implementation("com.example.shop:billing-service-api:1.0.0")
+    implementation("com.example.shop:order-service-api:1.0.0")
+    implementation("com.example.shop:stock-service-api:1.0.0")
     implementation("com.example.shop:shared:1.0.0")
 
     // Akka

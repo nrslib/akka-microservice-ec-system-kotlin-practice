@@ -1,10 +1,7 @@
-import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-
 plugins {
-    id("com.github.johnrengelman.shadow") version ("7.1.2")
-
     kotlin("jvm") version "1.6.10"
+
+    `maven-publish`
 }
 
 group = "com.example.shop"
@@ -23,14 +20,11 @@ dependencies {
     implementation(kotlin("stdlib"))
 
     // Modules
-    implementation("com.example.shop:billing-service-api:1.0.0")
-    implementation("com.example.shop:order-service-api:1.0.0")
     implementation("com.example.shop:shared:1.0.0")
 
     // Akka
     implementation("com.typesafe.akka:akka-actor-typed_$scalaBinary:$akkaVersion")
     implementation("com.typesafe.akka:akka-stream-typed_$scalaBinary:$akkaVersion")
-    implementation("com.typesafe.akka:akka-stream-kafka_${scalaBinary}:3.0.0")
 
     implementation("com.typesafe.akka:akka-persistence-typed_$scalaBinary:$akkaVersion")
     implementation("com.typesafe.akka:akka-persistence-query_$scalaBinary:$akkaVersion")
@@ -50,7 +44,7 @@ dependencies {
     testImplementation("com.typesafe.akka:akka-multi-node-testkit_$scalaBinary:$akkaVersion")
 
     implementation("com.typesafe.akka:akka-slf4j_$scalaBinary:$akkaVersion")
-    implementation("ch.qos.logback:logback-classic:1.2.11")
+    implementation("ch.qos.logback:logback-classic:1.2.10")
 
     implementation(platform("com.typesafe.akka:akka-bom_$scalaBinary:$akkaVersion"))
     implementation("com.typesafe.akka:akka-serialization-jackson_$scalaBinary:$akkaVersion")
@@ -62,24 +56,16 @@ dependencies {
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:1.6.10")
     // https://mvnrepository.com/artifact/commons-io/commons-io
     testImplementation("commons-io:commons-io:2.11.0")
-
-    implementation("software.amazon.msk:aws-msk-iam-auth:1.1.2")
 }
 
-tasks.withType<KotlinCompile> {
-    kotlinOptions {
-        freeCompilerArgs = listOf("-Xjsr305=strict")
-        jvmTarget = "1.8"
+publishing {
+    publications {
+        create<MavenPublication>("maven") {
+            groupId = "com.example.shop"
+            artifactId = "stock-service-api"
+            version = "1.0.0"
+
+            from(components["java"])
+        }
     }
-}
-
-tasks.withType<Jar> {
-    manifest {
-        attributes["Main-Class"] = "com.example.shop.billing.service.MainKt"
-    }
-}
-
-tasks.withType<ShadowJar> {
-    append("reference.conf")
-    append("version.conf")
 }

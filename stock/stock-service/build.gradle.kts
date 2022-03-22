@@ -23,8 +23,8 @@ dependencies {
     implementation(kotlin("stdlib"))
 
     // Modules
-    implementation("com.example.shop:billing-service-api:1.0.0")
     implementation("com.example.shop:order-service-api:1.0.0")
+    implementation("com.example.shop:stock-service-api:1.0.0")
     implementation("com.example.shop:shared:1.0.0")
 
     // Akka
@@ -63,7 +63,7 @@ dependencies {
     // https://mvnrepository.com/artifact/commons-io/commons-io
     testImplementation("commons-io:commons-io:2.11.0")
 
-    implementation("software.amazon.msk:aws-msk-iam-auth:1.1.2")
+    implementation("software.amazon.msk:aws-msk-iam-auth:1.1.3")
 }
 
 tasks.withType<KotlinCompile> {
@@ -75,7 +75,7 @@ tasks.withType<KotlinCompile> {
 
 tasks.withType<Jar> {
     manifest {
-        attributes["Main-Class"] = "com.example.shop.billing.service.MainKt"
+        attributes["Main-Class"] = "com.example.shop.stock.service.MainKt"
     }
 }
 

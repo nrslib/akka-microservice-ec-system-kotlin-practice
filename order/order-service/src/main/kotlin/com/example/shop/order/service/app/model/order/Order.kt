@@ -2,7 +2,6 @@ package com.example.shop.order.service.app.model.order
 
 import akka.Done
 import akka.actor.typed.ActorRef
-import akka.actor.typed.ActorSystem
 import akka.actor.typed.Behavior
 import akka.actor.typed.javadsl.ActorContext
 import akka.actor.typed.javadsl.Behaviors
