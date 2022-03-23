@@ -1,0 +1,21 @@
+version: '2'
+services:
+  order-service:
+    build: ./order/order-service
+    ports:
+      - "5000:5000"
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: 'broker:29092'
+  billing-service:
+    build: ./billing/billing-service
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: 'broker:29092'
+  stock-service:
+    build: ./stock/stock-service
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: 'broker:29092'
+
+networks:
+  default:
+    external:
+      name: develop-network
