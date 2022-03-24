@@ -5,7 +5,7 @@ import akka.actor.typed.javadsl.ActorContext
 import akka.actor.typed.javadsl.Behaviors
 import akka.actor.typed.javadsl.Receive
 import akka.cluster.sharding.typed.javadsl.ClusterSharding
-import com.example.shop.order.api.order.replies.ApproveOrderReply
+import com.example.shop.order.api.order.replies.ApproveBillingReply
 import com.example.shop.order.api.order.replies.CancelSecureReply
 import com.example.shop.order.api.order.replies.OrderCreateSagaReply
 import com.example.shop.order.api.order.replies.SecureInventoryReply
@@ -35,8 +35,14 @@ class OrderCreateSagaReplyHandler(context: ActorContext<Message>) :
                         saga.tell(OrderCreateSaga.SecureInventoryReply(it.message.orderId, it.message.success))
                         this
                     }
-                    is ApproveOrderReply -> {
-                        saga.tell(OrderCreateSaga.ApproveReply(it.message.orderId, it.message.success))
+                    is ApproveBillingReply -> {
+                        saga.tell(
+                            OrderCreateSaga.ApproveBillingReply(
+                                it.message.orderId,
+                                it.message.success,
+                                it.message.billingId
+                            )
+                        )
                         this
                     }
                     is CancelSecureReply -> {

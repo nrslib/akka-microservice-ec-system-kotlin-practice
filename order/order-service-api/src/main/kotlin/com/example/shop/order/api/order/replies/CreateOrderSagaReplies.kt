@@ -6,6 +6,7 @@ sealed interface OrderCreateSagaReply {
 
 data class SecureInventoryReply(override val orderId: String, val success: Boolean) : OrderCreateSagaReply
 
-data class ApproveOrderReply(override val orderId: String, val success: Boolean) : OrderCreateSagaReply
+data class ApproveBillingReply(override val orderId: String, val success: Boolean, val billingId: String) :
+    OrderCreateSagaReply
 
 data class CancelSecureReply(override val orderId: String, val success: Boolean) : OrderCreateSagaReply

@@ -6,7 +6,7 @@ import akka.actor.typed.javadsl.AskPattern
 import akka.http.javadsl.marshallers.jackson.Jackson
 import akka.http.javadsl.server.Directives.*
 import com.example.shop.order.service.app.service.order.OrderService
-import com.example.shop.order.service.rest.order.models.create.OrderCreateRequest
+import com.example.shop.order.service.rest.order.models.post.OrderPostRequest
 import com.fasterxml.jackson.databind.ObjectMapper
 
 
@@ -15,7 +15,7 @@ class OrderRoutes(
     private val objectMapper: ObjectMapper,
     private val orderService: ActorRef<OrderService.Message>
 ) {
-    private val timeout = system.settings().config().getDuration("order-service.ask-timeout")
+    private val timeout = system.settings().config().getDuration("service.ask-timeout")
 
     fun routes() = orderRoutes()
 
@@ -28,7 +28,7 @@ class OrderRoutes(
 
     private fun post() =
         post {
-            entity(Jackson.unmarshaller(objectMapper, OrderCreateRequest::class.java)) { request ->
+            entity(Jackson.unmarshaller(objectMapper, OrderPostRequest::class.java)) { request ->
                 val createOrder = {
                     AskPattern.ask(
                         orderService,

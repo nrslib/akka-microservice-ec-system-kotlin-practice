@@ -7,6 +7,7 @@ import akka.actor.typed.javadsl.*
 import akka.cluster.sharding.typed.javadsl.ClusterSharding
 import akka.cluster.sharding.typed.javadsl.EntityRef
 import akka.pattern.StatusReply
+import com.example.shop.order.api.order.models.OrderDetail
 import com.example.shop.order.service.app.model.order.Order
 import com.example.shop.order.service.app.model.order.OrderState
 import com.example.shop.order.service.saga.order.create.OrderCreateSaga
@@ -30,7 +31,7 @@ class OrderService(
     data class ApproveOrder(val orderId: String, val replyTo: ActorRef<StatusReply<Done>>) : Message
 
     private val clusterSharding = ClusterSharding.get(context.system)
-    private val timeout = context.system.settings().config().getDuration("order-service.ask-timeout")
+    private val timeout = context.system.settings().config().getDuration("service.ask-timeout")
     override fun createReceive(): Receive<Message> =
         newReceiveBuilder()
             .onMessage(GetOrder::class.java) { (orderId, replyTo) ->
@@ -49,7 +50,7 @@ class OrderService(
 
                 this
             }
-            .onMessage(CreateOrder::class.java) { (_, replyTo) ->
+            .onMessage(CreateOrder::class.java) { (accountId, replyTo) ->
                 val orderId = orderIdGenerator.generate()
                 val order = getOrder(orderId)
                 order.tell(Order.Create)
@@ -57,7 +58,7 @@ class OrderService(
                 replyTo.tell(CreateOrderReply(orderId))
 
                 val saga = getOrderCreateSaga(orderId)
-                saga.tell(OrderCreateSaga.StartSaga(orderId))
+                saga.tell(OrderCreateSaga.StartSaga(orderId, OrderDetail(accountId)))
 
                 this
             }
@@ -95,7 +96,7 @@ class OrderService(
             .build()
 
     private fun getOrder(orderId: String): EntityRef<Order.Command> {
-        return ClusterSharding.get(context.system).entityRefFor(Order.typekey(), orderId)
+        return clusterSharding.entityRefFor(Order.typekey(), orderId)
     }
 
     private fun getOrderCreateSaga(orderId: String): EntityRef<OrderCreateSaga.Message> {

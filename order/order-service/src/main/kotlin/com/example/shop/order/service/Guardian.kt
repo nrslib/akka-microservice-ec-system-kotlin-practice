@@ -3,7 +3,6 @@ package com.example.shop.order.service
 import akka.actor.typed.Behavior
 import akka.actor.typed.javadsl.ActorContext
 import akka.actor.typed.javadsl.Behaviors
-import akka.cluster.sharding.typed.javadsl.ClusterSharding
 import akka.cluster.typed.Cluster
 import com.example.kafka.delivery.KafkaConfig
 import com.example.kafka.delivery.KafkaConsumer
@@ -24,19 +23,9 @@ object Guardian {
     fun create(): Behavior<Void> = Behaviors.setup { context ->
         val kafkaConfig = KafkaConfig.load(context.system.settings().config())
         initSharding(context, kafkaConfig)
-
         launchHandler(context, kafkaConfig)
+        launchApp(context)
 
-        val system = context.system
-
-        val selfAddress = Cluster.get(system).selfMember().address()
-        val hostAndPort = "${selfAddress.host.get()}:${selfAddress.port.get()}"
-        val actorNameSuffix = "-fromGuardian-$hostAndPort"
-        val service = context.spawn(OrderService.create(UuidIdGenerator()), "orderService$actorNameSuffix")
-
-        val restRoutes = RestRoutes(system, jacksonObjectMapper().registerKotlinModule(), service)
-        val app = OrderServiceApp(system, system.settings().config(), restRoutes)
-        app.start()
 
         Behaviors.empty()
     }
@@ -50,20 +39,31 @@ object Guardian {
 
     private fun launchHandler(context: ActorContext<*>, kafkaConfig: KafkaConfig) {
         val consumerName = "kafkaConsumer-${OrderCreateSagaReply::class.java.name}"
-        KafkaConsumer.initSharding<OrderCreateSagaReply>(
-            context.system,
-            consumerName,
-            kafkaConfig,
-            OrderServiceChannels.createOrderSagaReplyChannel
-        ) { consumerContext, message ->
-            val handler = consumerContext.spawn(
-                OrderCreateSagaReplyHandler.create(),
-                "orderCreateSagaReplyHandler-${UUID.randomUUID()}"
-            )
-            handler.tell(OrderCreateSagaReplyHandler.Handle(message))
-        }
-        val consumer = ClusterSharding.get(context.system)
-            .entityRefFor(KafkaConsumer.typekey(consumerName), "createOrderSagaReply-kafkaConsumer-1")
+        val consumer = context.spawn(
+            KafkaConsumer.create<OrderCreateSagaReply>(
+                kafkaConfig,
+                OrderServiceChannels.createOrderSagaReplyChannel
+            ) { consumerContext, message ->
+                val handler = consumerContext.spawn(
+                    OrderCreateSagaReplyHandler.create(),
+                    "orderCreateSagaReplyHandler-${UUID.randomUUID()}"
+                )
+                handler.tell(OrderCreateSagaReplyHandler.Handle(message))
+            }, consumerName
+        )
         consumer.tell(KafkaConsumer.Initialize)
+    }
+
+    private fun launchApp(context: ActorContext<*>) {
+        val system = context.system
+
+        val selfAddress = Cluster.get(system).selfMember().address()
+        val hostAndPort = "${selfAddress.host.get()}:${selfAddress.port.get()}"
+        val actorNameSuffix = "-fromGuardian-$hostAndPort"
+        val service = context.spawn(OrderService.create(UuidIdGenerator()), "orderService$actorNameSuffix")
+
+        val restRoutes = RestRoutes(system, jacksonObjectMapper().registerKotlinModule(), service)
+        val app = OrderServiceApp(system, system.settings().config(), restRoutes)
+        app.start()
     }
 }

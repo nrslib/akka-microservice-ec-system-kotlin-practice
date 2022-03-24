@@ -1,6 +1,7 @@
 package com.example.kafka.delivery
 
 import akka.actor.typed.ActorSystem
+import akka.actor.typed.Terminated
 import akka.actor.typed.javadsl.AbstractBehavior
 import akka.actor.typed.javadsl.ActorContext
 import akka.actor.typed.javadsl.Behaviors
@@ -87,6 +88,11 @@ class KafkaConsumer<T>(
             }
             .onMessage(Received::class.java) { (message) ->
                 handler(context, message as T)
+
+                this
+            }
+            .onSignal(Terminated::class.java) {
+                println("terminated")
 
                 this
             }
