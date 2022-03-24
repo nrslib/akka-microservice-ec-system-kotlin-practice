@@ -1,0 +1,9 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="PublishToMavenLocals" type="CompoundRunConfigurationType">
+    <toRun name="billing-service-api [publishToMavenLocal]" type="GradleRunConfiguration" />
+    <toRun name="order-service-api [publishToMavenLocal]" type="GradleRunConfiguration" />
+    <toRun name="shared [publishToMavenLocal]" type="GradleRunConfiguration" />
+    <toRun name="stock-service-api [publishToMavenLocal]" type="GradleRunConfiguration" />
+    <method v="2" />
+  </configuration>
+</component>

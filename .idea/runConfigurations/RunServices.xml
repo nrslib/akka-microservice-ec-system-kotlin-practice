@@ -1,0 +1,8 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="RunServices" type="CompoundRunConfigurationType">
+    <toRun name="BillingServiceMainKt" type="JetRunConfigurationType" />
+    <toRun name="OrderServiceMainKt" type="JetRunConfigurationType" />
+    <toRun name="StockServiceMainKt" type="JetRunConfigurationType" />
+    <method v="2" />
+  </configuration>
+</component>
