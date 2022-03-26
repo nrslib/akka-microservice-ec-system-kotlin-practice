@@ -1,27 +1,25 @@
 package com.example.shop.order.service.rest.order
 
-import akka.actor.typed.ActorRef
-import akka.actor.typed.ActorSystem
-import akka.actor.typed.javadsl.AskPattern
+import akka.actor.typed.javadsl.ActorContext
 import akka.http.javadsl.marshallers.jackson.Jackson
 import akka.http.javadsl.server.Directives.*
-import com.example.shop.order.service.app.service.order.OrderService
+import akka.http.javadsl.server.PathMatchers.segment
+import com.example.shop.order.service.app.service.order.OrderApplicationService
 import com.example.shop.order.service.rest.order.models.post.OrderPostRequest
+import com.example.shop.shared.id.UuidIdGenerator
 import com.fasterxml.jackson.databind.ObjectMapper
 
 
 class OrderRoutes(
-    private val system: ActorSystem<*>,
+    private val context: ActorContext<*>,
     private val objectMapper: ObjectMapper,
-    private val orderService: ActorRef<OrderService.Message>
 ) {
-    private val timeout = system.settings().config().getDuration("service.ask-timeout")
-
     fun routes() = orderRoutes()
 
     private fun orderRoutes() =
         pathPrefix("orders") {
             concat(
+                get(),
                 post()
             )
         }
@@ -29,23 +27,26 @@ class OrderRoutes(
     private fun post() =
         post {
             entity(Jackson.unmarshaller(objectMapper, OrderPostRequest::class.java)) { request ->
-                val createOrder = {
-                    AskPattern.ask(
-                        orderService,
-                        { replyTo: ActorRef<OrderService.CreateOrderReply> ->
-                            OrderService.CreateOrder(
-                                request.accountId,
-                                replyTo
-                            )
-                        },
-                        timeout,
-                        system.scheduler()
-                    )
-                }
+                val service = generateOrderService()
+                val orderId = service.createOrder(request.accountId)
 
-                onSuccess(createOrder) {
-                    completeOK(it.orderId, Jackson.marshaller())
+                completeOK(orderId, Jackson.marshaller())
+            }
+        }
+
+    private fun get() =
+        get {
+            path(segment()) { orderId ->
+                val service = generateOrderService()
+                val future = service.get(orderId)
+
+                onSuccess(future) { order ->
+                    completeOK(order, Jackson.marshaller())
                 }
             }
         }
+
+    private fun generateOrderService(): OrderApplicationService {
+        return OrderApplicationService(context, UuidIdGenerator())
+    }
 }

@@ -34,7 +34,7 @@ class Order(
     }
 
     sealed interface Command
-    object Create : Command
+    object CreateOrder : Command
     data class Get(val replyTo: ActorRef<OrderState>) : Command
     data class Approve(val replyTo: ActorRef<StatusReply<Done>>) : Command
     data class Reject(val replyTo: ActorRef<StatusReply<Done>>) : Command
@@ -58,7 +58,7 @@ class Order(
                     state
                 }
             }
-            .onCommand(Create::class.java) { state, _ ->
+            .onCommand(CreateOrder::class.java) { state, _ ->
                 if (state.canActivate()) {
                     Effect().persist(Created)
                 } else {
