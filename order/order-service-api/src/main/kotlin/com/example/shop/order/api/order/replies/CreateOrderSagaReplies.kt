@@ -4,9 +4,16 @@ sealed interface OrderCreateSagaReply {
     val orderId: String
 }
 
-data class SecureInventoryReply(override val orderId: String, val success: Boolean) : OrderCreateSagaReply
+sealed interface SecureInventoryReply : OrderCreateSagaReply
+data class SecureInventorySucceeded(override val orderId: String) : SecureInventoryReply
+data class SecureInventoryFailed(override val orderId: String) : SecureInventoryReply
 
-data class ApproveBillingReply(override val orderId: String, val success: Boolean, val billingId: String) :
-    OrderCreateSagaReply
+sealed interface ApproveBillingReply : OrderCreateSagaReply
+data class ApproveBillingReplySucceeded(override val orderId: String, val billingId: String) :
+    ApproveBillingReply
+data class ApproveBillingReplyFailed(override val orderId: String) : ApproveBillingReply
+
+sealed interface ApproveBillingResult : OrderCreateSagaReply
+data class ApproveBillingCompleted(override val orderId: String, val billingId: String): ApproveBillingResult
 
 data class CancelSecureReply(override val orderId: String, val success: Boolean) : OrderCreateSagaReply

@@ -31,7 +31,7 @@ class OrderApplicationService(private val context: ActorContext<*>, private val 
             .toCompletableFuture()
             .thenApply {
                 val saga = entityRefForOrderCreateSaga(orderId)
-                saga.tell(OrderCreateSaga.StartSaga(orderId, detail))
+                saga.tell(OrderCreateSaga.StartOrder(orderId, detail))
 
                 it
             }
@@ -54,7 +54,7 @@ class OrderApplicationService(private val context: ActorContext<*>, private val 
         return clusterSharding.entityRefFor(Order.typekey(), orderId)
     }
 
-    private fun entityRefForOrderCreateSaga(orderId: String): EntityRef<OrderCreateSaga.Message> {
-        return clusterSharding.entityRefFor(OrderCreateSaga.typekey(), "orderCreateSaga-$orderId")
+    private fun entityRefForOrderCreateSaga(orderId: String): EntityRef<OrderCreateSaga.Command> {
+        return clusterSharding.entityRefFor(OrderCreateSaga.typekey(), OrderCreateSaga.entityId(orderId))
     }
 }

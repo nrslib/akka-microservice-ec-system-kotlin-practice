@@ -13,6 +13,7 @@ import com.example.shop.billing.api.billing.commands.BillingServiceCommand
 import com.example.shop.billing.service.app.service.billing.BillingApplicationService
 import com.example.shop.order.api.order.OrderServiceChannels
 import com.example.shop.order.api.order.replies.ApproveBillingReply
+import com.example.shop.order.api.order.replies.ApproveBillingReplySucceeded
 import com.example.shop.order.api.order.replies.OrderCreateSagaReply
 import com.example.shop.shared.id.UuidIdGenerator
 import java.util.*
@@ -46,7 +47,7 @@ class BillingServiceCommandHandler(
                 when (it.message) {
                     is ApproveOrder -> {
                         val billingId = service.holdBilling(it.message.consumerId, it.message.orderId)
-                        val reply = ApproveBillingReply(it.message.orderId, true, billingId)
+                        val reply = ApproveBillingReplySucceeded(it.message.orderId, billingId)
                         kafkaProducers.tell(
                             KafkaProducers.Send(
                                 OrderServiceChannels.createOrderSagaReplyChannel,

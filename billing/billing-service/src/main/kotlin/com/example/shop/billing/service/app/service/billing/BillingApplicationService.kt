@@ -12,10 +12,10 @@ import com.example.kafka.delivery.KafkaProducers
 import com.example.shop.billing.service.app.model.billing.Billing
 import com.example.shop.billing.service.app.model.billing.BillingDetail
 import com.example.shop.order.api.order.OrderServiceChannels
-import com.example.shop.order.api.order.replies.ApproveBillingReply
+import com.example.shop.order.api.order.replies.ApproveBillingCompleted
 import com.example.shop.shared.id.IdGenerator
 import java.time.Duration
-import java.util.concurrent.CompletionStage
+import java.util.concurrent.CompletableFuture
 
 class BillingApplicationService(
     private val context: ActorContext<*>,
@@ -34,13 +34,13 @@ class BillingApplicationService(
         return billingId
     }
 
-    fun getAll(): CompletionStage<List<String>> {
+    fun getAll(): CompletableFuture<List<String>> {
         val idsSource = readJournal.currentPersistenceIds()
 
-        return idsSource.runWith(Sink.seq(), context.system)
+        return idsSource.runWith(Sink.seq(), context.system).toCompletableFuture()
     }
 
-    fun get(billingId: String): CompletionStage<BillingDetail> {
+    fun get(billingId: String): CompletableFuture<BillingDetail> {
         val billing = getBilling(billingId)
 
         return AskPattern.ask(
@@ -48,10 +48,10 @@ class BillingApplicationService(
             { replyTo: ActorRef<BillingDetail> -> Billing.GetDetail(replyTo) },
             timeout,
             context.system.scheduler()
-        )
+        ).toCompletableFuture()
     }
 
-    fun approve(billingId: String): CompletionStage<StatusReply<String>> {
+    fun approve(billingId: String): CompletableFuture<StatusReply<String>> {
         val billing = getBilling(billingId)
 
         return AskPattern.ask(
@@ -59,13 +59,20 @@ class BillingApplicationService(
             { replyTo: ActorRef<StatusReply<String>> -> Billing.Approve(replyTo) },
             timeout,
             context.system.scheduler()
-        ).thenApply { result ->
-            val orderId = result.value
-            val reply = ApproveBillingReply(orderId, true, billingId)
-            kafkaProducers.tell(KafkaProducers.Send(OrderServiceChannels.createOrderSagaReplyChannel, orderId, reply))
+        ).toCompletableFuture()
+            .thenApply { result ->
+                val orderId = result.value
+                val reply = ApproveBillingCompleted(orderId, billingId)
+                kafkaProducers.tell(
+                    KafkaProducers.Send(
+                        OrderServiceChannels.createOrderSagaReplyChannel,
+                        orderId,
+                        reply
+                    )
+                )
 
-            result
-        }
+                result
+            }
     }
 
     private fun getBilling(billingId: String): EntityRef<Billing.Command> {

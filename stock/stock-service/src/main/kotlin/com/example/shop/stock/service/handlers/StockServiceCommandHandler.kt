@@ -1,20 +1,19 @@
 package com.example.shop.stock.service.handlers
 
-import akka.Done
-import akka.actor.typed.ActorRef
-import akka.actor.typed.javadsl.*
-import akka.pattern.StatusReply
+import akka.actor.typed.javadsl.AbstractBehavior
+import akka.actor.typed.javadsl.ActorContext
+import akka.actor.typed.javadsl.Behaviors
+import akka.actor.typed.javadsl.Receive
 import com.example.kafka.delivery.KafkaConfig
 import com.example.kafka.delivery.KafkaProducer
 import com.example.shop.order.api.order.OrderServiceChannels
 import com.example.shop.order.api.order.replies.CancelSecureReply
 import com.example.shop.order.api.order.replies.OrderCreateSagaReply
-import com.example.shop.order.api.order.replies.SecureInventoryReply
+import com.example.shop.order.api.order.replies.SecureInventorySucceeded
 import com.example.shop.stock.api.stock.commands.CancelSecure
 import com.example.shop.stock.api.stock.commands.SecureInventory
 import com.example.shop.stock.api.stock.commands.StockServiceCommand
-import com.example.shop.stock.service.app.service.stock.StockService
-import java.time.Duration
+import com.example.shop.stock.service.app.service.stock.StockApplicationService
 import java.util.*
 
 class StockServiceCommandHandler(context: ActorContext<Message>, private val kafkaConfig: KafkaConfig) :
@@ -33,53 +32,17 @@ class StockServiceCommandHandler(context: ActorContext<Message>, private val kaf
         newReceiveBuilder()
             .onMessage(Handle::class.java) {
                 val id = UUID.randomUUID().toString()
-                val service = context.spawn(StockService.create(), "stockService-$id")
-
+                val service = StockApplicationService(context)
                 when (it.message) {
                     is SecureInventory -> {
-                        val future = AskPattern.ask(
-                            service,
-                            { replyTo: ActorRef<StatusReply<Done>> ->
-                                StockService.SecureInventory(
-                                    it.message.orderId,
-                                    it.message.itemId,
-                                    replyTo
-                                )
-                            },
-                            Duration.ofSeconds(5),
-                            context.system.scheduler()
-                        )
-
-                        future.whenComplete { status, ex ->
-                            if (status != null) {
-                                val message = SecureInventoryReply(it.message.orderId, status.isSuccess)
-                                context.self.tell(ReplyOrderCreatedSaga(message))
-                            } else {
-                                throw ex
-                            }
-                        }
+                        service.secureInventory(it.message.orderId, "")
+                        val message = SecureInventorySucceeded(it.message.orderId)
+                        context.self.tell(ReplyOrderCreatedSaga(message))
                     }
                     is CancelSecure -> {
-                        val future = AskPattern.ask(
-                            service,
-                            { replyTo: ActorRef<StatusReply<Done>> ->
-                                StockService.CancelSecure(
-                                    it.message.orderId,
-                                    replyTo
-                                )
-                            },
-                            Duration.ofSeconds(5),
-                            context.system.scheduler()
-                        )
-
-                        future.whenComplete { status, ex ->
-                            if (status != null) {
-                                val message = CancelSecureReply(it.message.orderId, status.isSuccess)
-                                context.self.tell(ReplyOrderCreatedSaga(message))
-                            } else {
-                                throw ex
-                            }
-                        }
+                        service.cancelSecure(it.message.orderId)
+                        val message = CancelSecureReply(it.message.orderId, true)
+                        context.self.tell(ReplyOrderCreatedSaga(message))
                     }
                 }
 
