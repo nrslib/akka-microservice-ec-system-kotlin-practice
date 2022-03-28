@@ -4,16 +4,16 @@ import com.example.shop.shared.persistence.JacksonSerializable
 
 data class OrderState(val orderState: State = State.None) : JacksonSerializable {
     fun activate() =
-        if (canActivate()) copy(orderState = State.Created) else throw IllegalStateChangeException()
+        if (canActivate()) copy(orderState = State.Created) else throw IllegalStateChangeException(orderState)
 
-    fun approve() = if (canApprove()) copy(orderState = State.Approved) else throw IllegalStateChangeException()
+    fun approve() = if (canApprove()) copy(orderState = State.Approved) else throw IllegalStateChangeException(orderState)
 
     fun reject() =
-        if (canReject()) copy(orderState = State.Rejected) else throw IllegalStateChangeException()
+        if (canReject()) copy(orderState = State.Rejected) else throw IllegalStateChangeException(orderState)
 
     fun cancel() = if (canCancel()) {
         copy(orderState = State.Cancel)
-    } else throw IllegalStateChangeException()
+    } else throw IllegalStateChangeException(orderState)
 
     fun canActivate() = orderState != State.Cancel && orderState != State.Approved && orderState != State.Rejected
     fun canApprove() = orderState != State.Cancel && orderState != State.Rejected
@@ -34,4 +34,4 @@ enum class State {
     Cancel,
 }
 
-class IllegalStateChangeException : Exception()
+class IllegalStateChangeException(val currentState: State, override val message: String = "current state: $currentState") : Exception()

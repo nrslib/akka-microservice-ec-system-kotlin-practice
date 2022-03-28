@@ -11,41 +11,50 @@ import com.example.shop.order.service.app.model.order.OrderState
 import com.example.shop.order.service.saga.order.create.OrderCreateSaga
 import com.example.shop.shared.id.IdGenerator
 import java.time.Duration
-import java.util.concurrent.CompletionStage
+import java.util.concurrent.CompletableFuture
+
 
 class OrderApplicationService(private val context: ActorContext<*>, private val idGenerator: IdGenerator) {
     private val clusterSharding: ClusterSharding = ClusterSharding.get(context.system)
     private val timeout: Duration = context.system.settings().config().getDuration("service.ask-timeout")
 
-    fun createOrder(consumerId: String): String {
+    fun createOrder(consumerId: String): CompletableFuture<OrderCreateResult> {
         val orderId = idGenerator.generate()
         val detail = OrderDetail(consumerId)
-        val order = getOrder(orderId)
-        order.tell(Order.CreateOrder)
+        val order = entityRefForOrder(orderId)
+        val stage = AskPattern.ask(
+            order,
+            { replyTo: ActorRef<Order.CreateOrderReply> -> Order.CreateOrder(replyTo) },
+            timeout,
+            context.system.scheduler()
+        )
+            .toCompletableFuture()
+            .thenApply {
+                val saga = entityRefForOrderCreateSaga(orderId)
+                saga.tell(OrderCreateSaga.StartSaga(orderId, detail))
 
-        val saga = getSaga(orderId)
-        saga.tell(OrderCreateSaga.StartSaga(orderId, detail))
+                it
+            }
 
-        return orderId
+        return stage.thenApply { OrderCreateResult(orderId, it is Order.CreateOrderSucceeded) }
     }
 
-    fun get(orderId: String): CompletionStage<OrderState> {
-        val order = getOrder(orderId)
-        val future = AskPattern.ask(
+    fun get(orderId: String): CompletableFuture<OrderState> {
+        val order = entityRefForOrder(orderId)
+
+        return AskPattern.ask(
             order,
             { replyTo: ActorRef<OrderState> -> Order.Get(replyTo) },
             timeout,
             context.system.scheduler()
-        )
-
-        return future.toCompletableFuture()
+        ).toCompletableFuture()
     }
 
-    private fun getOrder(orderId: String): EntityRef<Order.Command> {
+    private fun entityRefForOrder(orderId: String): EntityRef<Order.Command> {
         return clusterSharding.entityRefFor(Order.typekey(), orderId)
     }
 
-    private fun getSaga(orderId: String): EntityRef<OrderCreateSaga.Message> {
+    private fun entityRefForOrderCreateSaga(orderId: String): EntityRef<OrderCreateSaga.Message> {
         return clusterSharding.entityRefFor(OrderCreateSaga.typekey(), "orderCreateSaga-$orderId")
     }
 }

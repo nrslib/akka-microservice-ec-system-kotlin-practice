@@ -2,8 +2,10 @@ package com.example.shop.order.service.rest.order
 
 import akka.actor.typed.javadsl.ActorContext
 import akka.http.javadsl.marshallers.jackson.Jackson
+import akka.http.javadsl.model.StatusCodes
 import akka.http.javadsl.server.Directives.*
 import akka.http.javadsl.server.PathMatchers.segment
+import com.example.shop.order.service.app.model.order.Order
 import com.example.shop.order.service.app.service.order.OrderApplicationService
 import com.example.shop.order.service.rest.order.models.post.OrderPostRequest
 import com.example.shop.shared.id.UuidIdGenerator
@@ -30,7 +32,13 @@ class OrderRoutes(
                 val service = generateOrderService()
                 val orderId = service.createOrder(request.accountId)
 
-                completeOK(orderId, Jackson.marshaller())
+                onSuccess(orderId) {
+                    if (it.success) {
+                        completeOK(it.orderId, Jackson.marshaller())
+                    } else {
+                        complete(StatusCodes.INTERNAL_SERVER_ERROR)
+                    }
+                }
             }
         }
 
