@@ -1,5 +1,7 @@
 package com.example.shop.billing.api.billing.commands
 
-sealed interface BillingServiceCommand
+sealed interface BillingServiceCommand {
+    val entityId: String
+}
 
-data class ApproveOrder(val orderId: String, val consumerId: String) : BillingServiceCommand
+data class ApproveOrder(override val entityId: String, val consumerId: String) : BillingServiceCommand

@@ -22,7 +22,7 @@ class KafkaProducer(context: ActorContext<Message>, private val topic: String, p
     }
 
     sealed interface Message
-    data class Send(val id: String, val message: Any) : Message
+    data class Send<T>(val id: String, val message: T) : Message
 
     override fun createReceive(): Receive<Message> =
         newReceiveBuilder()

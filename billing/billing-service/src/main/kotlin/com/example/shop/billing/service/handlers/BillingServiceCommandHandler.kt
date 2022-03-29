@@ -46,12 +46,12 @@ class BillingServiceCommandHandler(
 
                 when (it.message) {
                     is ApproveOrder -> {
-                        val billingId = service.holdBilling(it.message.consumerId, it.message.orderId)
-                        val reply = ApproveBillingReplySucceeded(it.message.orderId, billingId)
+                        val billingId = service.holdBilling(it.message.consumerId, it.message.entityId)
+                        val reply = ApproveBillingReplySucceeded(it.message.entityId, billingId)
                         kafkaProducers.tell(
                             KafkaProducers.Send(
                                 OrderServiceChannels.createOrderSagaReplyChannel,
-                                it.message.orderId,
+                                it.message.entityId,
                                 reply
                             )
                         )

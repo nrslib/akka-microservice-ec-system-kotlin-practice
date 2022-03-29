@@ -1,5 +1,6 @@
 package com.example.shop.order.service.saga.order.create
 
+import akka.actor.typed.ActorRef
 import akka.actor.typed.Behavior
 import akka.actor.typed.javadsl.ActorContext
 import akka.actor.typed.javadsl.Behaviors
@@ -8,20 +9,21 @@ import akka.cluster.sharding.typed.javadsl.Entity
 import akka.cluster.sharding.typed.javadsl.EntityTypeKey
 import akka.persistence.typed.PersistenceId
 import akka.persistence.typed.javadsl.*
-import com.example.kafka.delivery.KafkaProducer
-import com.example.shop.billing.api.billing.BillingServiceChannels
+import com.example.saga.ServiceActorProvider
+import com.example.shop.billing.api.billing.commands.BillingServiceCommand
 import com.example.shop.order.api.order.models.OrderDetail
 import com.example.shop.order.api.order.replies.*
 import com.example.shop.shared.persistence.JacksonSerializable
-import com.example.shop.stock.api.stock.StockServiceChannels
 import com.example.shop.stock.api.stock.commands.SecureInventory
+import com.example.shop.stock.api.stock.commands.StockServiceCommand
 import java.time.Duration
+import java.util.*
 
 
 class OrderCreateSaga(
     private val context: ActorContext<Command>,
     sagaId: String,
-    private val createProducer: (topic: String) -> Behavior<KafkaProducer.Message>
+    private val serviceActorProvider: ServiceActorProvider
 ) : EventSourcedBehavior<OrderCreateSaga.Command, OrderCreateSaga.Event, OrderCreateSagaState>(
     PersistenceId.ofUniqueId(
         sagaId
@@ -32,14 +34,14 @@ class OrderCreateSaga(
 
         fun entityId(orderId: String) = "orderCreateSaga-$orderId"
 
-        fun create(id: String, createProducer: (topic: String) -> Behavior<KafkaProducer.Message>): Behavior<Command> =
+        fun create(id: String, serviceActorProvider: ServiceActorProvider): Behavior<Command> =
             Behaviors.setup {
-                OrderCreateSaga(it, id, createProducer)
+                OrderCreateSaga(it, id, serviceActorProvider)
             }
 
-        fun initSharding(context: ActorContext<*>, createProducer: (topic: String) -> Behavior<KafkaProducer.Message>) {
+        fun initSharding(context: ActorContext<*>, serviceActorProvider: ServiceActorProvider) {
             ClusterSharding.get(context.system).init(Entity.of(typekey()) {
-                create(it.entityId, createProducer)
+                create(it.entityId, serviceActorProvider)
             })
         }
     }
@@ -93,13 +95,13 @@ class OrderCreateSaga(
         return builder.build()
     }
 
-    private fun scheduleRetry(
+    private fun <Message> scheduleRetry(
         state: OrderCreateSagaState,
-        message: Any
+        message: Message
     ) {
         val timeoutSecond = 1L
         val timeout = Duration.ofSeconds(timeoutSecond)
-        val retry = Retry(state.step, 0, timeoutSecond, message)
+        val retry = Retry(state.step, 0, timeoutSecond, message as Any)
         context.system.scheduler().scheduleOnce(timeout, {
             context.self.tell(retry)
         }, context.system.executionContext())
@@ -120,16 +122,9 @@ class OrderCreateSaga(
             .onCommand(SecureInventory::class.java) { state, (orderId) ->
                 Effect().persist(SecuringStarted).thenRun {
                     val message = SecureInventory(orderId, "test-id")
-                    val producer = context.spawn(
-                        createProducer(StockServiceChannels.commandChannel),
-                        "stockServiceProducer-$orderId"
-                    )
-                    producer.tell(
-                        KafkaProducer.Send(
-                            orderId,
-                            SecureInventory(orderId, "test-id")
-                        )
-                    )
+
+                    val stockService = spawnService<StockServiceCommand>("stockService-${UUID.randomUUID()}")
+                    stockService.tell(message)
 
                     scheduleRetry(state, message)
                 }
@@ -145,19 +140,21 @@ class OrderCreateSaga(
                         Effect().persist(SecuringFailed)
                 }
             }
-            .onCommand(Retry::class.java, this::retry)
+            .onCommand(Retry::class.java) {state, retry ->
+                retry<StockServiceCommand>(state, retry) { command ->
+                    val service = spawnService<StockServiceCommand>("billingService-${UUID.randomUUID()}")
+                    service.tell(command)
+                }
+            }
     }
 
     private fun buildApproveBilling(builder: CommandHandlerBuilder<Command, Event, OrderCreateSagaState>) {
         builder.forState { it.step == Step.ApproveBilling }
             .onCommand(ApproveBilling::class.java) { state, (orderId) ->
                 Effect().persist(ApprovalStarted).thenRun {
-                    val producer = context.spawn(
-                        createProducer(BillingServiceChannels.commandChannel),
-                        "billingServiceProducer-$orderId"
-                    )
                     val command = state.makeApproveBillingCommand()
-                    producer.tell(KafkaProducer.Send(orderId, command))
+                    val billingService = spawnService<BillingServiceCommand>("billingService-$orderId")
+                    billingService.tell(command)
 
                     scheduleRetry(state, command)
                 }
@@ -172,7 +169,12 @@ class OrderCreateSaga(
                 }
 
             }
-            .onCommand(Retry::class.java, this::retry)
+            .onCommand(Retry::class.java) {state, retry ->
+                retry<BillingServiceCommand>(state, retry) { command ->
+                    val service = spawnService<BillingServiceCommand>("billingService-${UUID.randomUUID()}")
+                    service.tell(command)
+                }
+            }
     }
 
     private fun buildWaitApproval(builder: CommandHandlerBuilder<Command, Event, OrderCreateSagaState>) {
@@ -180,10 +182,9 @@ class OrderCreateSaga(
             .onCommand(ReceiveApproveBillingCompleted::class.java) { _, _ ->
                 Effect().persist(ApprovalCompleted)
             }
-
     }
 
-    private fun retry(state: OrderCreateSagaState, command: Retry): EffectBuilder<Event, OrderCreateSagaState>? {
+    private fun <Message> retry(state: OrderCreateSagaState, command: Retry, predicate: (m: Message) -> Unit): EffectBuilder<Event, OrderCreateSagaState>? {
         return Effect().none().thenRun {
             if (state.step != command.state) {
                 return@thenRun
@@ -201,6 +202,8 @@ class OrderCreateSaga(
             if (nextDurationTime > maxTimeout) {
                 return@thenRun
             }
+
+            predicate(command.message as Message)
 
             val timeout = Duration.ofSeconds(nextDurationTime)
             val retry = Retry(state.step, nextCount, nextDurationTime, command.message)
@@ -248,5 +251,9 @@ class OrderCreateSaga(
             }
 
         return builder.build()
+    }
+
+    private inline fun <reified Message> spawnService(name: String): ActorRef<Message> {
+        return serviceActorProvider.spawn(context, Message::class.java, name)
     }
 }

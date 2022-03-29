@@ -35,13 +35,13 @@ class StockServiceCommandHandler(context: ActorContext<Message>, private val kaf
                 val service = StockApplicationService(context)
                 when (it.message) {
                     is SecureInventory -> {
-                        service.secureInventory(it.message.orderId, "")
-                        val message = SecureInventorySucceeded(it.message.orderId)
+                        service.secureInventory(it.message.entityId, "")
+                        val message = SecureInventorySucceeded(it.message.entityId)
                         context.self.tell(ReplyOrderCreatedSaga(message))
                     }
                     is CancelSecure -> {
-                        service.cancelSecure(it.message.orderId)
-                        val message = CancelSecureReply(it.message.orderId, true)
+                        service.cancelSecure(it.message.entityId)
+                        val message = CancelSecureReply(it.message.entityId, true)
                         context.self.tell(ReplyOrderCreatedSaga(message))
                     }
                 }
