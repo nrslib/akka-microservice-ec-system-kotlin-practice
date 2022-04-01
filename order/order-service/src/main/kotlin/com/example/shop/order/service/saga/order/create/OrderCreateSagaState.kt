@@ -2,7 +2,7 @@ package com.example.shop.order.service.saga.order.create
 
 import com.example.shop.billing.api.billing.commands.ApproveOrder
 import com.example.shop.order.api.order.models.OrderDetail
-import com.example.shop.shared.persistence.JacksonSerializable
+import com.example.shop.shared.persistence.CborSerializable
 
 
 data class OrderCreateSagaState(
@@ -11,7 +11,7 @@ data class OrderCreateSagaState(
     val step: Step = Step.None,
     val progress: Progress = Progress.Initialize,
     val billingId: String = ""
-) : JacksonSerializable {
+) : CborSerializable {
     fun securingPending() = copy(progress = Progress.SecuringPending)
     fun securingFailed() = copy(progress = Progress.SecuringFailed)
     fun approvalPending() = copy(progress = Progress.ApprovalPending)

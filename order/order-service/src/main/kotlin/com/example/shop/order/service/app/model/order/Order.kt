@@ -11,7 +11,7 @@ import akka.persistence.typed.PersistenceId
 import akka.persistence.typed.javadsl.CommandHandler
 import akka.persistence.typed.javadsl.EventHandler
 import akka.persistence.typed.javadsl.EventSourcedBehavior
-import com.example.shop.shared.persistence.JacksonSerializable
+import com.example.shop.shared.persistence.CborSerializable
 
 
 class Order(id: String) :
@@ -53,7 +53,7 @@ class Order(id: String) :
     object CancelSucceeded : CancelReply
     data class CancelFailed(val causeBy: Throwable) : CancelReply
 
-    sealed interface Event : JacksonSerializable
+    sealed interface Event : CborSerializable
     object Created : Event
     object Approved : Event
     object Rejected : Event

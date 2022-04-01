@@ -5,7 +5,6 @@ import akka.http.javadsl.marshallers.jackson.Jackson
 import akka.http.javadsl.model.StatusCodes
 import akka.http.javadsl.server.Directives.*
 import akka.http.javadsl.server.PathMatchers.segment
-import com.example.shop.order.service.app.model.order.Order
 import com.example.shop.order.service.app.service.order.OrderApplicationService
 import com.example.shop.order.service.rest.order.models.post.OrderPostRequest
 import com.example.shop.shared.id.UuidIdGenerator

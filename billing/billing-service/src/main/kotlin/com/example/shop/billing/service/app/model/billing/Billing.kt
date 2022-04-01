@@ -11,7 +11,7 @@ import akka.persistence.typed.PersistenceId
 import akka.persistence.typed.javadsl.CommandHandler
 import akka.persistence.typed.javadsl.EventHandler
 import akka.persistence.typed.javadsl.EventSourcedBehavior
-import com.example.shop.shared.persistence.JacksonSerializable
+import com.example.shop.shared.persistence.CborSerializable
 
 class Billing(billingId: String) :
     EventSourcedBehavior<Billing.Command, Billing.Event, Billing.State>(PersistenceId.ofUniqueId(billingId)) {
@@ -30,7 +30,7 @@ class Billing(billingId: String) :
     }
 
     sealed interface Command
-    sealed interface Event : JacksonSerializable
+    sealed interface Event : CborSerializable
 
     data class OpenBilling(val consumerId: String, val orderId: String) : Command
     data class BillingOpened(val consumerId: String, val orderId: String) : Event
@@ -40,7 +40,7 @@ class Billing(billingId: String) :
     data class Approve(val replyTo: ActorRef<StatusReply<String>>) : Command
     object Approved : Event
 
-    data class State(val consumerId: String, val orderId: String, val status: Status) : JacksonSerializable {
+    data class State(val consumerId: String, val orderId: String, val status: Status) : CborSerializable {
         enum class Status {
             Pending,
             Approved

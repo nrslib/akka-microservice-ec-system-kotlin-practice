@@ -1,8 +1,8 @@
 package com.example.shop.order.service.app.model.order
 
-import com.example.shop.shared.persistence.JacksonSerializable
+import com.example.shop.shared.persistence.CborSerializable
 
-data class OrderState(val orderState: State = State.None) : JacksonSerializable {
+data class OrderState(val orderState: State = State.None) : CborSerializable {
     fun activate() =
         if (canActivate()) copy(orderState = State.Created) else throw IllegalStateChangeException(orderState)
 

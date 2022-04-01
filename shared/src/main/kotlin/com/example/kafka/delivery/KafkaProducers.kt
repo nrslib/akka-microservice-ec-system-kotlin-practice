@@ -1,5 +1,6 @@
 package com.example.kafka.delivery
 
+import akka.actor.typed.Behavior
 import akka.actor.typed.javadsl.AbstractBehavior
 import akka.actor.typed.javadsl.ActorContext
 import akka.actor.typed.javadsl.Behaviors
@@ -11,7 +12,7 @@ class KafkaProducers(context: ActorContext<Message>, private val kafkaConfig: Ka
         context
     ) {
     companion object {
-        fun create(kafkaConfig: KafkaConfig) = Behaviors.setup<Message> {
+        fun create(kafkaConfig: KafkaConfig): Behavior<Message> = Behaviors.setup {
             KafkaProducers(it, kafkaConfig)
         }
     }

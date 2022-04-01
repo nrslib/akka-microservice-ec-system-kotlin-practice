@@ -13,7 +13,7 @@ import com.example.saga.ServiceActorProvider
 import com.example.shop.billing.api.billing.commands.BillingServiceCommand
 import com.example.shop.order.api.order.models.OrderDetail
 import com.example.shop.order.api.order.replies.*
-import com.example.shop.shared.persistence.JacksonSerializable
+import com.example.shop.shared.persistence.CborSerializable
 import com.example.shop.stock.api.stock.commands.SecureInventory
 import com.example.shop.stock.api.stock.commands.StockServiceCommand
 import java.time.Duration
@@ -47,34 +47,36 @@ class OrderCreateSaga(
     }
 
     sealed interface Command
+    sealed interface Event : CborSerializable
+
     data class StartOrder(val orderId: String, val orderDetail: OrderDetail) : Command
-
-    data class SecureInventory(val orderId: String) : Command
-    data class ReceiveSecureInventoryReply(val orderId: String, val reply: SecureInventoryReply) : Command
-
-    data class ApproveBilling(val orderId: String) : Command
-    data class ReceiveApproveBillingReply(val orderId: String, val reply: ApproveBillingReply) : Command
-
-    data class ReceiveApproveBillingCompleted(val orderId: String, val billingId: String) : Command
-
-    data class CancelInventoryReply(val orderId: String, val success: Boolean) : Command
-
-    data class Retry(val state: Step, val count: Int, val recentTimeout: Long, val message: Any) : Command
-
-    sealed interface Event : JacksonSerializable
-
     data class OrderStarted(val orderId: String, val orderDetail: OrderDetail) : Event
 
+
+    data class SecureInventory(val orderId: String) : Command
     object SecuringStarted : Event
+
+    data class ReceiveSecureInventoryReply(val orderId: String, val reply: SecureInventoryReply) : Command
     object SecuringSucceeded : Event
     object SecuringFailed : Event
 
+
+    data class ApproveBilling(val orderId: String) : Command
     object ApprovalStarted : Event
+
+    data class ReceiveApproveBillingReply(val orderId: String, val reply: ApproveBillingReply) : Command
     data class ApprovalSucceeded(val billingId: String) : Event
+
+    data class ReceiveApproveBillingCompleted(val orderId: String, val billingId: String) : Command
     object ApprovalCompleted : Event
     object Rejected : Event
 
+
+    data class CancelInventoryReply(val orderId: String, val success: Boolean) : Command
     object CancelInventoryFailed : Event
+
+
+    data class Retry(val state: Step, val count: Int, val recentTimeout: Long, val message: Any) : Command
 
     override fun emptyState(): OrderCreateSagaState = OrderCreateSagaState("", null)
 
